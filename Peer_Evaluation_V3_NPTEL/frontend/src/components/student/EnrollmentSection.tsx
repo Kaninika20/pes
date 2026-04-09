@@ -21,7 +21,6 @@ interface Enrollment {
     status: string;
     notes?: string;
 }
-
 const EnrollmentSection = ({ darkMode }: { darkMode: boolean }) => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);

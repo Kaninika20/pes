@@ -8,6 +8,7 @@ export interface ISubmission extends Document {
   answerPdf: Buffer;
   answerPdfMimeType: string;
   submittedAt: Date;
+  answers: string[];
 }
 
 const submissionSchema = new Schema<ISubmission>({
@@ -18,6 +19,7 @@ const submissionSchema = new Schema<ISubmission>({
   answerPdf: { type: Buffer, required: true },
   answerPdfMimeType: { type: String, required: true },
   submittedAt: { type: Date, default: Date.now },
+  answers: { type: [String], required: true },
 });
 
 submissionSchema.index({ student: 1, exam: 1 }, { unique: true });

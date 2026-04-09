@@ -8,10 +8,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'pes-secret';
 const OTP_STORE = new Map<string, string>();
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-export const sendOtpEmail = async (req: Request, res: Response) : Promise<void> => {
+export const sendOtpEmail = async (req: Request, res: Response): Promise<void> => {
   const { email } = req.body;
-  if (!email)
-  { 
+  if (!email) {
     res.status(400).json({ message: 'Email is required' });
     return;
   }
@@ -23,8 +22,8 @@ export const sendOtpEmail = async (req: Request, res: Response) : Promise<void> 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.MAIL_SENDER || "noreplypeerevaluationsystem@gmail.com",      
-      pass: process.env.MAIL_PASSWORD ||  "twmnfoksvgwfcegh"   
+      user: process.env.MAIL_SENDER || "noreplypeerevaluationsystem@gmail.com",
+      pass: process.env.MAIL_PASSWORD || "twmnfoksvgwfcegh"
     }
   });
 
@@ -91,7 +90,25 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
+    let isPasswordValid = false;
+    const isBcryptHash = typeof user.password === "string" && user.password.startsWith("$2");
+
+    if (isBcryptHash) {
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } else if (user.password === password) {
+      // Backward compatibility for legacy/plaintext seeded users:
+      // upgrade password storage to bcrypt on successful login.
+      isPasswordValid = true;
+      user.password = await bcrypt.hash(password, 10);
+      await user.save();
+    }
+
+    if (!isPasswordValid) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
@@ -139,12 +156,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     // Send email
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.MAIL_SENDER || "noreplypeerevaluationsystem@gmail.com",      
-          pass: process.env.MAIL_PASSWORD ||  "twmnfoksvgwfcegh"   
-        }
-      });
+      service: 'gmail',
+      auth: {
+        user: process.env.MAIL_SENDER || "noreplypeerevaluationsystem@gmail.com",
+        pass: process.env.MAIL_PASSWORD || "twmnfoksvgwfcegh"
+      }
+    });
 
     await transporter.sendMail({
       from: `"Password Reset" <noreplypeerevaluationsystem@gmail.com>`,

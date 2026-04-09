@@ -14,6 +14,7 @@ export interface IExam extends Document {
   answerKeyMimeType?: string;
   questionPaperPdf?: Buffer;
   questionPaperMimeType?: string;
+  answerKey?: string[];
 }
 
 const examSchema = new Schema<IExam>({
@@ -30,6 +31,7 @@ const examSchema = new Schema<IExam>({
   answerKeyMimeType: { type: String },
   questionPaperPdf: { type: Buffer },
   questionPaperMimeType: { type: String },
+  answerKey: { type: [String] },
 });
 
 export const Exam = model<IExam>("Exam", examSchema);

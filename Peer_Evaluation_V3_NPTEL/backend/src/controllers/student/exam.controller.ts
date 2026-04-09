@@ -13,7 +13,7 @@ export const getStudentExamsByCourse = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const studentId = req.user.id;
+    const studentId = req.user?._id;
     const { courseId } = req.params; // or req.query if you prefer
 
     if (!courseId) {
@@ -31,7 +31,6 @@ export const getStudentExamsByCourse = async (
       students: student._id,
       course: courseId,
     });
-
     const batchIds = studentBatches.map((b) => b._id);
 
     const now = new Date();
@@ -57,7 +56,7 @@ export const getStudentExams = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const studentId = (req as any).user.id;
+    const studentId = (req as any).user?._id;
 
     const student = await User.findById(studentId);
     if (!student) {

@@ -3,7 +3,7 @@ import express from "express";
 import { Request, Response, NextFunction } from 'express';
 import connectDB from "./config/db.ts";
 import studentRoutes from "./routes/student/student.routes.ts";
-import taRoutes from "./routes/ta/ta.routes.ts"; 
+import taRoutes from "./routes/ta/ta.routes.ts";
 import teacherRoutes from "./routes/teacher/teacher.routes.ts";
 import authRoutes from './routes/authorization/auth.routes.ts';
 import adminroutes from './routes/admin/admin.routes.ts';
@@ -18,7 +18,7 @@ import "./models/Course.ts";
 import "./models/Batch.ts";
 import "./models/Exam.ts";
 import "./models/User.ts";
-import "./models/Flag.ts"; 
+import "./models/Flag.ts";
 import "./models/UIDMap.ts";
 
 import cors from 'cors';
@@ -29,7 +29,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -51,7 +51,7 @@ app.use(express.json());
 connectDB();
 
 // Routes
-app.use("/api/admin",adminroutes);
+app.use("/api/admin", adminroutes);
 // app.use("/api/admin/student",adminstudentroutes);
 // app.use("/api/admin/teachers",adminteachroutes);
 app.use("/api/student", studentRoutes);

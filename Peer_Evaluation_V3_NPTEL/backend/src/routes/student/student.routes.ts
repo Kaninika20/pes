@@ -8,7 +8,6 @@ import {
 import { submitEvaluation } from "../../controllers/student/submitEvaluation.controller.ts";
 import { getPendingEvaluations } from "../../controllers/student/getPendingEvaluations.controller.ts";
 import { getEvaluationResults } from "../../controllers/student/getEvaluationResults.controller.ts";
-import { submitAnswer } from "../../controllers/student/submitAnswer.controller.ts";
 import { getSubmissions } from "../../controllers/student/getSubmissions.controller.ts";
 import { flagEvaluation } from "../../controllers/student/flagEvaluation.controller.ts"; // using correct file
 import { submitPeerEvaluation } from "../../controllers/student/submitPeerEvaluation.controller.ts";
@@ -28,6 +27,8 @@ import {
 } from "../../controllers/student/enrollment.controller.ts";
 import { getAnswerKeyPdf } from "../../controllers/student/answerKeyPdf.controller.ts";
 import { getQuestionPaperPdf } from "../../controllers/student/questionPaperPdf.controller.ts";
+import { getEvaluationStatus } from "../../controllers/student/getEvaluationStatus.controller.ts";
+import { submitAnswer } from "../../controllers/student/submitAnswer.controller.ts";
 const router = Router();
 const upload = multer();
 
@@ -38,12 +39,6 @@ router.get("/courses/:courseId/exams", authMiddleware, getStudentExamsByCourse);
 router.post("/evaluate", authMiddleware, submitEvaluation);
 router.get("/pending-evaluations", authMiddleware, getPendingEvaluations);
 router.get("/results", authMiddleware, getEvaluationResults);
-router.post(
-  "/submit-answer",
-  authMiddleware,
-  upload.single("pdf"),
-  submitAnswer
-);
 router.get("/submissions", authMiddleware, getSubmissions);
 router.post("/flag-evaluation", authMiddleware, flagEvaluation);
 router.post("/submit-peer-evaluation", authMiddleware, submitPeerEvaluation);
@@ -61,4 +56,6 @@ router.get("/all-courses", authMiddleware, getAllCourses);
 router.get("/batches-by-course", authMiddleware, getBatchesByCourse);
 router.get("/answer-key/:examId", authMiddleware, getAnswerKeyPdf);
 router.get("/question-paper/:examId", authMiddleware, getQuestionPaperPdf);
+router.get("/evaluation-status", authMiddleware, getEvaluationStatus);
+router.post("/submit-answer", authMiddleware, upload.single("pdf"), submitAnswer);
 export default router;

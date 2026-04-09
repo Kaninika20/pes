@@ -38,6 +38,7 @@ interface Exam {
   endTime: string;
   numQuestions: number;
   k: number;
+  maxMarks: number[];
   // questions?: { q?: string; max?: number; questionText?: string; maxMarks?: number }[];
 }
 
@@ -60,7 +61,6 @@ export default function TeacherExams() {
   const [numQuestions, setNumQuestions] = useState<number>(1);
   const [maxMarks, setMaxMarks] = useState<number[]>([0]);
   const [questionPaperFile, setQuestionPaperFile] = useState<File | null>(null);
-
   // Loading states
   const [allLoading, setAllLoading] = useState(true);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -382,8 +382,8 @@ export default function TeacherExams() {
             flaggedErr.response?.data?.error === "Exam not found"
               ? "Exam not found."
               : flaggedErr.response?.data?.error === "No completed evaluations found"
-              ? "No completed evaluations found for this exam."
-              : msg;
+                ? "No completed evaluations found for this exam."
+                : msg;
         }
         toastAction(msg, "error");
       }
@@ -394,8 +394,8 @@ export default function TeacherExams() {
           err.response?.data?.error === "Exam not found"
             ? "Exam not found."
             : err.response?.data?.error === "No completed evaluations found"
-            ? "No completed evaluations found for this exam."
-            : msg;
+              ? "No completed evaluations found for this exam."
+              : msg;
       }
       toastAction(msg, "error");
     }
@@ -832,12 +832,12 @@ export default function TeacherExams() {
               </div>
               <div className="mt-2">
                 <label className="font-semibold text-purple-700">Upload Question Paper (PDF)</label>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="w-full border-2 border-purple-400 px-4 py-2 rounded-xl"
-                    onChange={e => setQuestionPaperFile(e.target.files?.[0] || null)}
-                  />
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="w-full border-2 border-purple-400 px-4 py-2 rounded-xl"
+                  onChange={e => setQuestionPaperFile(e.target.files?.[0] || null)}
+                />
               </div>
             </div>
             <div>

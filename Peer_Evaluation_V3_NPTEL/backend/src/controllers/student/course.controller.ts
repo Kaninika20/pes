@@ -12,7 +12,11 @@ export const getStudentCourses = async (
   res: Response
 ): Promise<void> => {
   try {
-    const studentId = req.user.id; // assuming auth middleware sets req.user
+    const studentId = req.user?._id;
+    if (!studentId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
 
     const student = await User.findById(studentId).populate("enrolledCourses");
 
@@ -92,6 +96,7 @@ export const getAllCourses = async (_req: Request, res: Response) => {
 
     if (!courses || courses.length === 0) {
       res.status(404).json({ message: "No courses found" });
+      return;
     }
 
     const filtered = courses.map((course) => ({

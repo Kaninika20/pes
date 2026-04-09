@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { Submission } from "../../models/Submission.ts";
 import { Exam } from "../../models/Exam.ts";
+import { Evaluation } from "../../models/Evaluation.ts";
+import { User } from "../../models/User.ts";
 
 export const submitAnswer = async (
   req: Request,
@@ -8,7 +10,11 @@ export const submitAnswer = async (
   next: NextFunction
 ) => {
   try {
-    const { examId } = req.body;
+    const S01 = "s01_20260408@pes.local";
+    const S02 = "s02_20260408@pes.local";
+    const ALWAYS_FLOW_EXAM_TITLE = "Single Flow Peer Assignment";
+
+    const { examId, answers } = req.body;
 
     const studentId = req.user?._id?.toString() || req.body.studentId;
     if (!studentId) {
@@ -33,7 +39,71 @@ export const submitAnswer = async (
       return;
     }
 
-    // Prevent duplicate submissions
+    const submitter = await User.findById(studentId).select("email");
+    const isS01 = submitter?.email === S01;
+    const isS02 = submitter?.email === S02;
+    const isAlwaysFlowSubmitter = isS01 || isS02;
+    const isAlwaysFlowExam = exam.title === ALWAYS_FLOW_EXAM_TITLE;
+
+    const parsedAnswers = JSON.parse(answers || "[]");
+
+    if (isAlwaysFlowSubmitter && isAlwaysFlowExam) {
+      // For repeated test cycles: overwrite submission each time.
+      await Submission.findOneAndUpdate(
+        { student: studentId, exam: examId },
+        {
+          $set: {
+            student: studentId,
+            exam: examId,
+            course: exam.course,
+            batch: exam.batch,
+            answerPdf: req.file.buffer,
+            answerPdfMimeType: req.file.mimetype,
+            submittedAt: now,
+            answers: parsedAnswers,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      // Reciprocal: S01 -> S02, S02 -> S01
+      const evaluatorEmail = isS01 ? S02 : S01;
+      const evaluator = await User.findOne({ email: evaluatorEmail }).select("_id");
+      if (!evaluator) {
+        res.status(500).json({ error: `Auto evaluator ${evaluatorEmail} not found` });
+        return;
+      }
+
+      // Each submit resets/creates pending evaluation.
+      await Evaluation.findOneAndUpdate(
+        {
+          exam: exam._id,
+          evaluator: evaluator._id,
+          evaluatee: studentId,
+        },
+        {
+          $set: {
+            exam: exam._id,
+            evaluator: evaluator._id,
+            evaluatee: studentId,
+            marks: [],
+            feedback: "",
+            corrections: [],
+            flagged: false,
+            status: "pending",
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      res.json({
+        message:
+          `Answer submitted. Pending peer evaluation has been sent to ${evaluatorEmail}`,
+      });
+      return;
+    }
+
+    // Default behavior for all other users/exams: no duplicate submissions.
     const existing = await Submission.findOne({
       student: studentId,
       exam: examId,
@@ -43,7 +113,6 @@ export const submitAnswer = async (
       return;
     }
 
-    // Save the student's answer
     await Submission.create({
       student: studentId,
       exam: examId,
@@ -52,6 +121,7 @@ export const submitAnswer = async (
       answerPdf: req.file.buffer,
       answerPdfMimeType: req.file.mimetype,
       submittedAt: now,
+      answers: parsedAnswers,
     });
 
     // // ------------------ PEER EVALUATION LOGIC ------------------

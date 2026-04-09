@@ -29,19 +29,25 @@ import {
   getAllStudents,
   getTaCandidates,
 } from "../../controllers/teacher/getAllStudents.controller.ts";
-import { enrollStudents } from "../../controllers/teacher/teacherEnroll.controller.ts";
-import { getBatchStudents2 } from "../../controllers/teacher/teacherEnroll.controller.ts";
+import {
+  enrollStudents,
+  getBatchStudents2,
+  getPendingEnrollmentsForTeacher,
+  handleTeacherEnrollmentDecision,
+} from "../../controllers/teacher/teacherEnroll.controller.ts";
 import { getBatchTA } from "../../controllers/teacher/getBatchTA.controller.ts";
 import { generateQrPdfBundle } from "../../controllers/teacher/generateExamQrPdfBundle.controller.ts";
 import { handleBulkUploadScans } from "../../controllers/teacher/handleBulkUploadScans.controller.ts";
 import { generateTicketsForPendingEvaluations } from "../../controllers/teacher/markUnevaluated.controller.ts";
 import { generateEvaluationStatistics } from "../../controllers/teacher/statistics.controller.ts";
+import { createDefaultCoursesBatches } from "../../controllers/teacher/createDefaultCoursesBatches.controller.ts";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Courses
 router.get("/courses", authMiddleware, getTeacherCourses);
+router.post("/setup-default-courses-batches", authMiddleware, createDefaultCoursesBatches);
 router.get("/courses/:courseId/exams", authMiddleware, getExamsByCourse);
 
 // Dashboard Stats
@@ -89,6 +95,8 @@ router.delete(
 router.get("/batch/:batchId/ta", authMiddleware, getBatchTA);
 router.get("/students", authMiddleware, getAllStudents);
 router.post("/enroll", authMiddleware, enrollStudents);
+router.get("/pending-enrollments", authMiddleware, getPendingEnrollmentsForTeacher);
+router.post("/enrollment/:enrollmentId/decision", authMiddleware, handleTeacherEnrollmentDecision);
 router.get("/batch/:batchId/students", authMiddleware, getBatchStudents2);
 router.get("/ta-candidates/:courseId", authMiddleware, getTaCandidates);
 // QR Code Uploads

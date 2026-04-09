@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { Batch } from "../../models/Batch.ts";
 import { User } from "../../models/User.ts";
+import bcrypt from "bcryptjs";
+import Enrollment from "../../models/Enrollment.ts";
+import AuthenticatedRequest from "../../middlewares/authMiddleware.ts";
 
 export const enrollStudents = async (req: Request, res: Response) => {
   const { courseId, batchId, students } = req.body;
@@ -20,15 +23,26 @@ export const enrollStudents = async (req: Request, res: Response) => {
 
     const studentIds: Types.ObjectId[] = [];
 
+    const resolveEmail = (student: { email?: string; id?: string }) => {
+      const raw = (student.email || student.id || "").trim().toLowerCase();
+      if (!raw) return "";
+      return raw.includes("@") ? raw : `${raw}@pes.local`;
+    };
+
     for (const student of students) {
-      let user = await User.findOne({ email: student.email });
+      const normalizedEmail = resolveEmail(student);
+      if (!student?.name?.trim() || !normalizedEmail) {
+        continue;
+      }
+
+      let user = await User.findOne({ email: normalizedEmail });
 
       if (!user) {
         user = await User.create({
-          name: student.name,
-          email: student.email,
+          name: student.name.trim(),
+          email: normalizedEmail,
           role: "student",
-          password: "temp1234",
+          password: await bcrypt.hash("temp1234", 10),
           enrolledCourses: [courseId],
         });
       } else {

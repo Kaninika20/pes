@@ -12,6 +12,10 @@ export const getPendingEvaluations = async (
 ) => {
   try {
     const studentId = req.user?._id;
+    if (!studentId || req.user?.role !== "student") {
+      res.status(403).json({ error: "Only students can access pending evaluations." });
+      return;
+    }
 
     const pending = await Evaluation.find({
       evaluator: studentId,
@@ -28,19 +32,13 @@ export const getPendingEvaluations = async (
         const exam = ev.exam as unknown as {
           _id: string;
           title: string;
-          questions: { questionText: string; maxMarks: number }[];
-          numQuestions?: number;
-          maxMarks?: number[];
+          numQuestions: number;
+          maxMarks: number[];
           answerKeyPdf?: Buffer;
           answerKeyMimeType?: string;
         };
 
-        if (
-          !exam ||
-          !ev.evaluatee ||
-          typeof ev.evaluatee !== "object" ||
-          !("_id" in ev.evaluatee)
-        ) {
+        if (!exam || !ev.evaluatee || typeof ev.evaluatee !== "object" || !("_id" in ev.evaluatee)) {
           return null;
         }
 
@@ -54,10 +52,10 @@ export const getPendingEvaluations = async (
           exam: {
             _id: exam._id,
             title: exam.title,
-            questions: exam.questions,
-            numQuestions: exam.numQuestions ?? (exam.questions ? exam.questions.length : 0),
-            maxMarks: exam.maxMarks ?? (exam.questions ? exam.questions.map(q => q.maxMarks) : []),
+            numQuestions: exam.numQuestions,
+            maxMarks: exam.maxMarks
           },
+          evaluatee: ev.evaluatee,
           submissionId: submission ? submission._id : null,
           pdfUrl: submission
             ? `http://localhost:${PORT}/api/student/submission-pdf/${submission._id}`

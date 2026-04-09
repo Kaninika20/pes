@@ -5,7 +5,7 @@ import { Submission } from "../../models/Submission.ts";
 import { Evaluation } from "../../models/Evaluation.ts";
 import { sendBatchReminderEmails } from "../../utils/sendEmailReminder.ts";
 import AuthenticatedRequest from "../../middlewares/authMiddleware.ts";
-import { assignEvaluationsFlow } from "../../utils/assignEvaluationsFlow.ts";
+import { assignEvaluationsConstrained } from "../../utils/assignEvaluationsConstrained.ts";
 
 export const initiatePeerEvaluation = async (
   req: AuthenticatedRequest,
@@ -37,19 +37,28 @@ export const initiatePeerEvaluation = async (
       return;
     }
 
-    const submissions = await Submission.find({ exam: examId });
-    const submittedStudents = submissions.map((sub) => sub.student.toString());
+    const submissions = await Submission.find({ exam: examId }).select("student");
+    const submittedStudents = Array.from(
+      new Set(submissions.map((sub) => sub.student.toString()))
+    );
     const k = exam.k;
     const n = submittedStudents.length;
+    const maxFeasibleK = Math.floor((n - 1) / 2);
 
-    if (typeof k !== "number" || k < 1 || k >= n) {
+    if (
+      typeof k !== "number" ||
+      !Number.isInteger(k) ||
+      k < 1 ||
+      k >= n ||
+      k > maxFeasibleK
+    ) {
       res.status(400).json({
-        message: "k must be a positive integer less than number of submitted students.",
+        message: `k must be an integer between 1 and ${maxFeasibleK} for ${n} submitted students.`,
       });
       return;
     }
 
-    const [success, pairs] = assignEvaluationsFlow(submittedStudents, k);
+    const [success, pairs] = assignEvaluationsConstrained(submittedStudents, k);
     if (!success) {
       res.status(400).json({
         message: `Unable to assign ${k} evaluations per student. Possibly due to too few submissions.`,

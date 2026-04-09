@@ -15,7 +15,7 @@ interface Course {
 }
 
 interface Evaluator {
-  _id: string;
+  _id: string | null;
   name: string;
 }
 
@@ -29,9 +29,15 @@ interface ExamResult {
     batchName?: string;
   };
   averageMarks: string | null;
+  submissionId?: string | null;
   marks: number[][];
   feedback: string[];
   evaluators: Evaluator[];
+  corrections?: {
+    questionIndex: number;
+    correctAnswer: string;
+    remark: string;
+  }[][];
 }
 
 type Props = {
@@ -39,6 +45,7 @@ type Props = {
 };
 
 const ViewMarks = ({ darkMode }: Props) => {
+  const token = localStorage.getItem("token");
   const [courses, setCourses] = useState<Course[]>([]);
   const [allResults, setAllResults] = useState<ExamResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<ExamResult[]>([]);
@@ -48,17 +55,18 @@ const ViewMarks = ({ darkMode }: Props) => {
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const [raiseTicketMap, setRaiseTicketMap] = useState<{ [key: string]: boolean }>({});
   const [ticketMessages, setTicketMessages] = useState<{ [key: string]: string }>({});
+  const [showReviewerIdentity, setShowReviewerIdentity] = useState(false);
 
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem("token");
         const [coursesRes, resultsRes] = await Promise.all([
           axios.get(`http://localhost:${PORT}/api/student/enrolled-courses-batches`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           axios.get(`http://localhost:${PORT}/api/student/results`, {
+            params: { includeReviewerIdentity: showReviewerIdentity },
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -74,7 +82,7 @@ const ViewMarks = ({ darkMode }: Props) => {
     };
 
     fetchInitialData();
-  }, []);
+  }, [showReviewerIdentity, token]);
 
   useEffect(() => {
     if (!selectedCourse && !selectedBatch) {
@@ -104,7 +112,6 @@ const ViewMarks = ({ darkMode }: Props) => {
     const message = ticketMessages[key];
     if (!message.trim()) return alert("Please enter a concern message.");
     try {
-      const token = localStorage.getItem("token");
       await axios.post(
         `http://localhost:${PORT}/api/student/raise-ticket`,
         {
@@ -124,9 +131,35 @@ const ViewMarks = ({ darkMode }: Props) => {
     }
   };
 
+  const openReviewedAssignment = async (submissionId: string) => {
+    try {
+      const res = await fetch(`http://localhost:${PORT}/api/student/submission-pdf/${submissionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        alert("Unable to open reviewed assignment.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch {
+      alert("Unable to open reviewed assignment.");
+    }
+  };
+
   return (
     <div className={`p-10 w-full max-w-5xl space-y-8 ${darkMode ? 'bg-gray-900 text-white' : ''}`}>
       <h2 className="text-3xl font-bold mb-4">Your Marks</h2>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={showReviewerIdentity}
+          onChange={(e) => setShowReviewerIdentity(e.target.checked)}
+        />
+        Show reviewer identity (optional)
+      </label>
 
       <div className="flex gap-4">
         <select
@@ -171,6 +204,15 @@ const ViewMarks = ({ darkMode }: Props) => {
                     Course: {res.exam.courseName} | Batch: {res.exam.batchName}
                   </div>
                   <div className="text-sm">Average Marks: {res.averageMarks}</div>
+                  {res.submissionId && (
+                    <button
+                      type="button"
+                      onClick={() => openReviewedAssignment(res.submissionId!)}
+                      className="inline-block mt-2 text-xs underline text-indigo-400"
+                    >
+                      Open Reviewed Assignment
+                    </button>
+                  )}
                 </div>
                 <button
                   className="bg-indigo-600 text-white px-4 py-2 rounded-xl"
@@ -193,12 +235,26 @@ const ViewMarks = ({ darkMode }: Props) => {
                         <div className="text-sm">Marks: {markSet.join(", ")}</div>
                         <div className="text-sm">Feedback: {res.feedback[idx] || "No feedback"}</div>
 
-                        <button
-                          className="text-blue-400 underline mt-1 text-sm"
-                          onClick={() => toggleRaiseTicket(key)}
-                        >
-                          {raiseTicketMap[key] ? "Cancel" : "Raise Ticket"}
-                        </button>
+                        {res.corrections?.[idx] && res.corrections[idx].length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs font-bold uppercase text-indigo-500">Targeted Corrections:</p>
+                            {res.corrections[idx].map((corr, cIdx) => (
+                              <div key={cIdx} className={`p-2 rounded border text-xs ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-indigo-50 border-indigo-100'}`}>
+                                <p><strong>Q{corr.questionIndex + 1}:</strong> {corr.remark}</p>
+                                <p className="text-green-600">Correct Solution: {corr.correctAnswer}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {evaluator?._id && (
+                          <button
+                            className="text-blue-400 underline mt-1 text-sm"
+                            onClick={() => toggleRaiseTicket(key)}
+                          >
+                            {raiseTicketMap[key] ? "Cancel" : "Raise Ticket"}
+                          </button>
+                        )}
 
                         {raiseTicketMap[key] && (
                           <div className="mt-2">

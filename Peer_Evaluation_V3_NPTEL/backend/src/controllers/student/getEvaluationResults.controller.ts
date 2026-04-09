@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Evaluation } from "../../models/Evaluation.ts";
 import { IUser } from "../../models/User.ts";
+import { Submission } from "../../models/Submission.ts";
 
 // Extend Express Request interface to include 'user'
 declare global {
@@ -22,8 +23,13 @@ export const getEvaluationResults = async (
 ): Promise<void> => {
   try {
     const studentId = req.user?._id?.toString();
+    const includeReviewerIdentity = req.query.includeReviewerIdentity === "true";
     if (!studentId) {
       res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (req.user?.role !== "student") {
+      res.status(403).json({ error: "Only students can access evaluation results." });
       return;
     }
 
@@ -51,6 +57,21 @@ export const getEvaluationResults = async (
     }
 
     const resultsMap: Record<string, any> = {};
+    const examIds = Array.from(
+      new Set(
+        evaluations
+          .map((ev) => ev.exam?._id?.toString())
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+    const submissions = await Submission.find({
+      student: studentId,
+      exam: { $in: examIds },
+    }).select("_id exam");
+    const submissionByExamId = new Map<string, string>();
+    submissions.forEach((sub) => {
+      submissionByExamId.set(sub.exam.toString(), String(sub._id));
+    });
 
     evaluations.forEach((ev) => {
       const examKey = ev.exam?._id?.toString() || "unknown";
@@ -58,26 +79,33 @@ export const getEvaluationResults = async (
       if (!resultsMap[examKey]) {
         resultsMap[examKey] = {
           exam: ev.exam,
+          submissionId: submissionByExamId.get(examKey) || null,
           marksList: [],
           feedbackList: [],
           evaluators: [],
+          correctionsList: [],
         };
       }
 
-      const evaluator =
-        typeof ev.evaluator === "object" && "name" in ev.evaluator
+      const evaluator = includeReviewerIdentity
+        ? typeof ev.evaluator === "object" && "name" in ev.evaluator
           ? {
-              _id: ev.evaluator._id.toString(),
-              name: (ev.evaluator as unknown as IUser).name,
-            }
+            _id: ev.evaluator._id.toString(),
+            name: (ev.evaluator as unknown as IUser).name,
+          }
           : {
-              _id: ev.evaluator?.toString() || "unknown",
-              name: "Unknown",
-            };
+            _id: ev.evaluator?.toString() || "unknown",
+            name: "Unknown",
+          }
+        : {
+          _id: null,
+          name: "Anonymous Reviewer",
+        };
 
       resultsMap[examKey].marksList.push(ev.marks);
       resultsMap[examKey].feedbackList.push(ev.feedback);
       resultsMap[examKey].evaluators.push(evaluator);
+      resultsMap[examKey].correctionsList.push(ev.corrections || []);
     });
 
     const results = Object.values(resultsMap).map((group: any) => {
@@ -89,9 +117,9 @@ export const getEvaluationResults = async (
       const avg =
         totalPerEvaluator.length > 0
           ? (
-              totalPerEvaluator.reduce((sum: number, total: number) => sum + total, 0) /
-              totalPerEvaluator.length
-            ).toFixed(2)
+            totalPerEvaluator.reduce((sum: number, total: number) => sum + total, 0) /
+            totalPerEvaluator.length
+          ).toFixed(2)
           : null;
 
       return {

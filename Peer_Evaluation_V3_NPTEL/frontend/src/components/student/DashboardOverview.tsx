@@ -7,6 +7,20 @@ interface DashboardOverviewProps {
 
 const PORT = import.meta.env.VITE_BACKEND_PORT || 5000;
 
+interface UpcomingExam {
+  _id: string;
+  title: string;
+  startTime: string;
+}
+
+interface EvaluationResult {
+  exam: {
+    _id: string;
+    courseName: string;
+  };
+  averageMarks: string | null;
+}
+
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({ darkMode }) => {
   const token = localStorage.getItem('token');
 
@@ -37,6 +51,16 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ darkMode }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       return data?.results || [];
+    },
+  });
+
+  const { data: evaluationStatus, isLoading: statusLoading } = useQuery({
+    queryKey: ["evaluationStatus"],
+    queryFn: async () => {
+      const { data } = await axios.get(`http://localhost:${PORT}/api/student/evaluation-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return data;
     },
   });
 
@@ -77,7 +101,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ darkMode }) => {
           <p style={{ color: palette.muted }}>No upcoming exams</p>
         ) : (
           <ul className="list-disc pl-5 space-y-2 text-base leading-relaxed" style={{ color: palette.muted }}>
-            {exams.slice(0, 3).map((exam: any) => (
+            {exams.slice(0, 3).map((exam: UpcomingExam) => (
               <li key={exam._id}>
                 {exam.title} - {new Date(exam.startTime).toLocaleString()}
               </li>
@@ -93,7 +117,17 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ darkMode }) => {
         {evalsLoading ? (
           <p style={{ color: palette.muted }}>Loading...</p>
         ) : (
-          <p style={{ color: palette.muted }}>You have {evaluations.length} peer reviews pending.</p>
+          <div style={{ color: palette.muted }}>
+            <p>You have {evaluations.length} peer reviews pending.</p>
+            {statusLoading ? (
+              <p>Checking completion status...</p>
+            ) : (
+              <p>
+                Completed: {evaluationStatus?.asEvaluator?.completed ?? 0}/
+                {evaluationStatus?.asEvaluator?.total ?? 0}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -107,7 +141,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ darkMode }) => {
           <p style={{ color: palette.muted }}>No evaluation results available.</p>
         ) : (
           <ul className="list-disc pl-5 space-y-2 text-base leading-relaxed" style={{ color: palette.muted }}>
-            {results.slice(0, 3).map((r: any) => (
+            {results.slice(0, 3).map((r: EvaluationResult) => (
               <li key={r.exam._id}>
                 {r.exam.courseName}: <span style={{ color: palette.text, fontWeight: 600 }}>{r.averageMarks}</span>
               </li>

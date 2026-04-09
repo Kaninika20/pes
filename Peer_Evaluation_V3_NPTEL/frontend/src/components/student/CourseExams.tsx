@@ -63,6 +63,7 @@ const CourseExams = ({ courseId, onBack, darkMode }: Props) => {
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
   const [viewingExam, setViewingExam] = useState<Exam | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState<Date>(new Date());
 
@@ -71,8 +72,9 @@ const CourseExams = ({ courseId, onBack, darkMode }: Props) => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleButtonClick = (examId: string) => {
-    setActiveExamId(examId);
+  const handleButtonClick = (exam: Exam) => {
+    setActiveExamId(exam._id);
+    setAnswers(Array(exam.numQuestions).fill(''));
     setUploadMsg(null);
     setSelectedFile(null);
     setTimeout(() => {
@@ -94,6 +96,7 @@ const CourseExams = ({ courseId, onBack, darkMode }: Props) => {
       const formData = new FormData();
       formData.append('pdf', selectedFile);
       formData.append('examId', examId);
+      formData.append('answers', JSON.stringify(answers));
       await axios.post(
         `http://localhost:${PORT}/api/student/submit-answer`,
         formData,
@@ -187,30 +190,48 @@ const CourseExams = ({ courseId, onBack, darkMode }: Props) => {
 
             <button
               className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-green-700 transition"
-              onClick={() => handleButtonClick(exam._id)}
+              onClick={() => handleButtonClick(exam)}
               disabled={!canSubmit}
             >
               {isEnded ? "Closed" : isStarted ? "Submit Answers" : "Not Started"}
             </button>
 
             {activeExamId === exam._id && canSubmit && (
-              <div className="mt-3 space-y-2">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <button
-                  className="bg-gray-800 text-white px-4 py-2 rounded-xl text-sm hover:bg-gray-900 transition"
-                  onClick={() => handleSubmit(exam._id)}
-                >
-                  {selectedFile ? "Upload PDF" : "Choose PDF"}
-                </button>
-                {selectedFile && (
-                  <span className="text-xs text-gray-500 ml-2">{selectedFile.name}</span>
-                )}
+              <div className="mt-3 space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Enter your answers:</p>
+                  {answers.map((ans, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-xs w-6">Q{idx + 1}:</span>
+                      <input
+                        type="text"
+                        value={ans}
+                        onChange={(e) => {
+                          const newAnswers = [...answers];
+                          newAnswers[idx] = e.target.value;
+                          setAnswers(newAnswers);
+                        }}
+                        className={`flex-1 text-sm p-1 border rounded ${darkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                        placeholder="Answer"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    className="bg-gray-800 text-white px-4 py-2 rounded-xl text-sm hover:bg-gray-900 transition w-full"
+                    onClick={() => handleSubmit(exam._id)}
+                  >
+                    {selectedFile ? `Upload PDF (${selectedFile.name})` : "Choose Answer Sheet PDF"}
+                  </button>
+                </div>
                 {uploadMsg && (
                   <div className={`text-sm mt-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{uploadMsg}</div>
                 )}

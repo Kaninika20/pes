@@ -12,31 +12,32 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) {
-    res.status(401).json({ message: "Token missing" });
-    return;
-  }
-
   try {
-    // console.log(token);
-    // console.log(process.env.JWT_SECRET);
-    // console.log("---------------------");
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-
-    const user = await User.findById(decoded._id || decoded.id);
-    if (!user) {
-      res.status(404).json({ message: "User not found" });
-
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ message: "Unauthorized: missing Bearer token." });
       return;
     }
-    req.user = user;
 
+    const token = authHeader.split(" ")[1];
+    const secret = process.env.JWT_SECRET || "pes-secret";
+    const decoded = jwt.verify(token, secret) as { id?: string; role?: string };
+
+    if (!decoded?.id) {
+      res.status(401).json({ message: "Unauthorized: invalid token payload." });
+      return;
+    }
+
+    const user = await User.findById(decoded.id).select("_id name email role isTA");
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized: user not found." });
+      return;
+    }
+
+    req.user = user;
     next();
-  } catch (err) {
-    console.log(err);
-    res.status(401).json({ message: "Invalid token" });
+  } catch {
+    res.status(401).json({ message: "Unauthorized: invalid or expired token." });
   }
 };
 export default AuthenticatedRequest;

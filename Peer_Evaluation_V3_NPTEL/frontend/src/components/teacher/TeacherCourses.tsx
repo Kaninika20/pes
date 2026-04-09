@@ -169,7 +169,6 @@ const TeacherCourses = () => {
       setEnrollError("Something went wrong. Please try again.");
     }
   };
-
   return (
     <div className="flex flex-col items-center justify-start w-full h-full pt-10 pb-4">
       <h2 className="text-3xl font-extrabold mb-10 text-center drop-shadow" style={{ color: palette['text-dark'] }}>
@@ -250,7 +249,7 @@ const TeacherCourses = () => {
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
               <h3 className="text-xl font-bold mb-4" style={{ color: palette['text-dark'] }}>
-                Upload CSV for {enrollCourse} - {enrollBatch}
+                Enroll Students for {enrollCourse} - {enrollBatch}
               </h3>
               <form onSubmit={handleEnrollSubmit}>
                 <input
