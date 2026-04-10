@@ -50,6 +50,22 @@ app.use(express.json());
 // Connect DB
 connectDB();
 
+// Root route
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    message: 'Peer Evaluation System API',
+    version: '3.0',
+    endpoints: {
+      auth: '/api/auth',
+      admin: '/api/admin',
+      student: '/api/student',
+      teacher: '/api/teacher',
+      ta: '/api/ta',
+      dashboard: '/api/dashboard'
+    }
+  });
+});
+
 // Routes
 app.use("/api/admin", adminroutes);
 // app.use("/api/admin/student",adminstudentroutes);
